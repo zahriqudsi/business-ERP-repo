@@ -80,8 +80,9 @@ class QuotationTest extends TestCase
         $this->postJson('/quotations', $this->payload());
         $quotation = Quotation::firstOrFail();
 
-        $this->get("/quotations/{$quotation->id}/pdf")->assertOk()->assertHeader('content-type', 'application/pdf');
+        $response = $this->get("/quotations/{$quotation->id}/pdf")->assertOk()->assertHeader('content-type', 'application/pdf');
         Storage::assertExists('quotations/h_r_colombo_1180.pdf');
+        $this->assertSame(Storage::get('quotations/h_r_colombo_1180.pdf'), $response->getContent());
     }
 
     public function test_convert_creates_invoice_with_items(): void

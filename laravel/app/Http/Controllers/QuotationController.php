@@ -78,10 +78,16 @@ class QuotationController extends Controller
     {
         [$fileName, $pdf] = $pdfs->quotation($quotation);
 
-        // Keep an archive copy of every generated quotation, as the legacy system did.
-        Storage::put('quotations/'.$fileName, $pdf->output());
+        // Render once: a second dompdf output() re-subsets the already-subset fonts and garbles the text.
+        $contents = $pdf->output();
 
-        return $pdf->stream($fileName);
+        // Keep an archive copy of every generated quotation, as the legacy system did.
+        Storage::put('quotations/'.$fileName, $contents);
+
+        return response($contents, 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$fileName.'"',
+        ]);
     }
 
     /**
