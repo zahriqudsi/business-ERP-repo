@@ -51,7 +51,7 @@ class AuthTest extends TestCase
 
     public function test_otp_flow_when_enabled(): void
     {
-        config(['sjpos.otp.enabled' => true]);
+        config(['sjpos.otp.enabled' => true, 'sjpos.otp.email' => 'office@sj.test']);
         Mail::fake();
         $user = User::create(['username' => 'admin', 'password' => 'Admin@123']);
 
@@ -68,6 +68,44 @@ class AuthTest extends TestCase
         $this->post('/verify-otp', ['otp' => '123456'])->assertRedirect(route('dashboard'));
         $this->assertAuthenticatedAs($user);
         $this->assertDatabaseCount('otp_codes', 0);
+    }
+
+    public function test_otp_code_goes_to_the_user_own_email_from_the_business_name(): void
+    {
+        config(['sjpos.otp.enabled' => true, 'sjpos.otp.email' => 'office@sj.test']);
+        Mail::fake();
+        User::create(['username' => 'admin', 'email' => 'admin@sj.test', 'password' => 'Admin@123']);
+
+        $this->post('/login', ['username' => 'admin', 'password' => 'Admin@123'])->assertRedirect(route('otp.create'));
+
+        Mail::assertSent(LoginOtpMail::class, fn (LoginOtpMail $mail) => $mail->hasTo('admin@sj.test')
+            && ! $mail->hasTo('office@sj.test')
+            && $mail->hasFrom(config('mail.from.address'), 'SJ Technology'));
+    }
+
+    public function test_otp_code_for_a_user_without_email_goes_to_the_business_mailbox(): void
+    {
+        config(['sjpos.otp.enabled' => true, 'sjpos.otp.email' => 'office@sj.test']);
+        Mail::fake();
+        User::create(['username' => 'admin', 'password' => 'Admin@123']);
+
+        $this->post('/login', ['username' => 'admin', 'password' => 'Admin@123'])->assertRedirect(route('otp.create'));
+
+        Mail::assertSent(LoginOtpMail::class, fn (LoginOtpMail $mail) => $mail->hasTo('office@sj.test'));
+    }
+
+    public function test_otp_sign_in_is_refused_when_there_is_no_address_for_the_code(): void
+    {
+        config(['sjpos.otp.enabled' => true, 'sjpos.otp.email' => '']);
+        Mail::fake();
+        User::create(['username' => 'admin', 'password' => 'Admin@123']);
+
+        $this->post('/login', ['username' => 'admin', 'password' => 'Admin@123'])
+            ->assertSessionHasErrors(['login' => 'Your account has no email address for sign-in codes. Please ask the owner to add one.']);
+
+        $this->assertGuest();
+        $this->assertDatabaseCount('otp_codes', 0);
+        Mail::assertNothingSent();
     }
 
     public function test_logout(): void

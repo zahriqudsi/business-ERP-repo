@@ -38,7 +38,7 @@
 
     <div class="job-sheet card paper border-0 shadow-sm mb-4" data-bs-theme="light">
         <div class="card-body p-3 p-md-4 p-lg-5">
-            @include('jobs._document', ['logoSrc' => asset(config('sjpos.company.logo'))])
+            @include('jobs._document', ['logoSrc' => logo_url()])
         </div>
     </div>
 

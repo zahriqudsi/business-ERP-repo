@@ -11,6 +11,7 @@
         'documents' => ['Documents', 'file-earmark-text'],
         'tax' => ['Tax', 'percent'],
         'general' => ['Money & backups', 'sliders'],
+        'sign-in' => ['Sign-in', 'shield-lock'],
     ];
 @endphp
 
@@ -94,12 +95,12 @@
       <section id="branding" class="card settings-section mb-4">
         <div class="card-header"><i class="bi bi-image me-2"></i>Logo</div>
         <div class="card-body d-flex flex-wrap gap-4 align-items-center">
-          <img src="{{ asset(data_get($settings, 'company.logo')) }}?v={{ crc32((string) data_get($settings, 'company.logo')) }}" alt="Current logo" class="logo-preview" id="logoPreview">
+          <img src="{{ logo_url() }}" alt="Current logo" class="logo-preview" id="logoPreview">
           <div class="flex-grow-1">
             <label for="logo" class="form-label small fw-semibold">Upload a new logo</label>
             <input type="file" id="logo" name="logo" class="form-control" accept="image/png,image/jpeg">
             <div class="form-text">PNG or JPG, up to 2 MB. A square or wide image with a transparent background looks best.</div>
-            @if (str_starts_with((string) data_get($settings, 'company.logo'), 'uploads/'))
+            @if (Str::startsWith((string) data_get($settings, 'company.logo'), ['uploads/', 'branding/']))
               <div class="form-check mt-2">
                 <input class="form-check-input" type="checkbox" name="remove_logo" value="1" id="remove_logo">
                 <label class="form-check-label small" for="remove_logo">Remove my logo and use the default</label>
@@ -209,6 +210,26 @@
             <label for="backup_keep" class="form-label small fw-semibold">Backups to keep</label>
             <input type="number" id="backup_keep" name="backup[keep]" class="form-control" value="{{ $value('backup.keep') }}" min="1" max="365" required>
             <div class="form-text">Older backups are deleted automatically.</div>
+          </div>
+        </div>
+      </section>
+
+      {{-- Sign-in --}}
+      <section id="sign-in" class="card settings-section mb-4">
+        <div class="card-header"><i class="bi bi-shield-lock me-2"></i>Sign-in</div>
+        <div class="card-body row g-3">
+          <div class="col-12">
+            <div class="form-check form-switch">
+              <input type="hidden" name="otp[enabled]" value="0">
+              <input class="form-check-input" type="checkbox" role="switch" id="otp_enabled" name="otp[enabled]" value="1" @checked($value('otp.enabled'))>
+              <label class="form-check-label fw-semibold" for="otp_enabled">Ask for an emailed code after the password</label>
+              <div class="form-text mt-0">Each user gets the code at the email address on their user account.</div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <label for="otp_email" class="form-label small fw-semibold">Codes for users without an email go to</label>
+            <input type="email" id="otp_email" name="otp[email]" class="form-control" value="{{ $value('otp.email') }}" placeholder="owner@yourbusiness.com">
+            <div class="form-text">Leave empty to stop users without an email from signing in while codes are on.</div>
           </div>
         </div>
       </section>

@@ -47,6 +47,10 @@ class LoginController extends Controller
             return redirect()->intended(route('dashboard'));
         }
 
+        if ($otp->recipientFor($user) === null) {
+            return back()->withErrors(['login' => 'Your account has no email address for sign-in codes. Please ask the owner to add one.'])->onlyInput('username');
+        }
+
         if (! $otp->issue($user)) {
             return back()->withErrors(['login' => 'Could not send verification code. Please try again.'])->onlyInput('username');
         }

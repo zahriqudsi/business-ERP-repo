@@ -8,6 +8,7 @@ use App\Services\Tenancy\TenantManager;
 use App\Services\Tenancy\TenantProvisioner;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 /**
  * Real tenancy for a test: a fresh landlord database and real business databases,
@@ -30,6 +31,9 @@ trait CreatesTenants
 
         $this->beforeApplicationDestroyed(function () {
             $this->app->make(TenantManager::class)->end();
+            foreach (Tenant::withTrashed()->pluck('id') as $id) {
+                File::deleteDirectory(storage_path("app/tenants/{$id}"));
+            }
             $this->dropTenantDatabases();
         });
     }

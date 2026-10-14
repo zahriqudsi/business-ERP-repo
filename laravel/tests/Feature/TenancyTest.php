@@ -6,6 +6,9 @@ use App\Models\Invoice;
 use App\Models\Landlord\Domain;
 use App\Models\Landlord\Tenant;
 use App\Services\Settings;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\Concerns\CreatesTenants;
 use Tests\TestCase;
@@ -97,6 +100,57 @@ class TenancyTest extends TestCase
 
         $this->get('http://alpha.pos.test/login')->assertOk()->assertSee('Alpha Trading')->assertDontSee('Beta Trading');
         $this->get('http://beta.pos.test/login')->assertOk()->assertSee('Beta Trading')->assertDontSee('Alpha Trading');
+    }
+
+    public function test_an_uploaded_logo_is_stored_and_served_only_for_its_business(): void
+    {
+        $alpha = $this->createTenant('alpha');
+        $beta = $this->createTenant('beta');
+        $this->createUser($alpha, 'alice');
+        $this->createUser($beta, 'bob');
+        $this->signInOn($alpha, 'alice');
+        $form = ['company' => ['name' => 'Alpha Trading'], 'currency_symbol' => 'Rs.', 'credit_days' => 30, 'backup' => ['keep' => 14],
+            'invoice' => ['first_number' => 1], 'quotation' => ['first_number' => 1], 'job' => ['first_number' => 1]];
+
+        $this->put('http://alpha.pos.test/settings', $form + ['logo' => UploadedFile::fake()->image('logo.png', 300, 100)])->assertSessionHasNoErrors();
+
+        $logo = $this->asTenant($alpha, fn () => config('sjpos.company.logo'));
+        $this->assertFileExists(storage_path("app/tenants/{$alpha->id}/{$logo}"));
+        $this->assertFileDoesNotExist(public_path($logo));
+        $this->assertSame([300, 100], array_slice(getimagesizefromstring($this->get('http://alpha.pos.test/logo')->streamedContent()), 0, 2));
+
+        $this->post('http://alpha.pos.test/logout');
+        $this->signInOn($beta, 'bob');
+        $this->assertSame(file_get_contents(public_path('assets/img/default-logo.png')), $this->get('http://beta.pos.test/logo')->streamedContent());
+    }
+
+    public function test_backups_are_written_and_listed_per_business(): void
+    {
+        $alpha = $this->createTenant('alpha');
+        $beta = $this->createTenant('beta');
+        $this->createUser($alpha, 'alice');
+        $this->createUser($beta, 'bob');
+        $this->signInOn($alpha, 'alice');
+
+        $this->post('http://alpha.pos.test/backups')->assertSessionHas('success');
+
+        $backups = File::files(storage_path("app/tenants/{$alpha->id}/backups"));
+        $this->assertCount(1, $backups);
+        $this->assertStringContainsString("-- {$alpha->database} backup", gzdecode(file_get_contents($backups[0]->getPathname())));
+
+        $this->post('http://alpha.pos.test/logout');
+        $this->signInOn($beta, 'bob');
+        $this->get('http://beta.pos.test/backups')->assertOk()->assertDontSee($backups[0]->getFilename());
+    }
+
+    public function test_files_saved_on_the_default_disk_go_to_the_business_folder(): void
+    {
+        $alpha = $this->createTenant('alpha');
+
+        $this->asTenant($alpha, fn () => Storage::put('quotations/q.pdf', 'pdf'));
+
+        $this->assertFileExists(storage_path("app/tenants/{$alpha->id}/private/quotations/q.pdf"));
+        $this->assertFileDoesNotExist(storage_path('app/private/quotations/q.pdf'));
     }
 
     public function test_a_custom_domain_opens_its_business(): void

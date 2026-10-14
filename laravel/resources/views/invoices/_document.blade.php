@@ -2,7 +2,7 @@
 @php($company = config('sjpos.company'))
 <div class="invoice-details paper animate-fade" data-bs-theme="light">
     <div class="header">
-        <img src="{{ asset($company['logo']) }}" alt="{{ $company['name'] }} logo">
+        <img src="{{ logo_url() }}" alt="{{ $company['name'] }} logo">
         <div class="contact-info">
             <p class="fw-bold fs-5 text-primary">{{ $company['name'] }}</p>
             <p>{{ $company['address'] }}</p>

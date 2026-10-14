@@ -62,8 +62,8 @@ php artisan test
 | Key | Purpose |
 | --- | --- |
 | `APP_TIMEZONE` | Defaults to `Asia/Colombo` |
-| `OTP_ENABLED` | `true` to require the emailed login code (was the `OTP_ENABLED` constant) |
-| `OTP_EMAIL` | Mailbox that receives login codes |
+| `OTP_ENABLED` | Default for requiring an emailed login code; each business can change it under **Settings → Sign-in** |
+| `OTP_EMAIL` | Default mailbox for codes of users who have no email of their own (also changeable in Settings) |
 | `MAIL_MAILER=mailgun`, `MAILGUN_DOMAIN`, `MAILGUN_SECRET`, `MAILGUN_ENDPOINT` | Mailgun sending (`api.eu.mailgun.net` for EU) |
 | `TENANCY_ENABLED` | `true` to serve many businesses, each with its own database (see below) |
 
@@ -95,6 +95,14 @@ php artisan tenants:run "sjpos:user admin --password=..." --tenant=acme
 
 Business databases use the normal migrations in `database/migrations`; the landlord's are in
 `database/migrations/landlord`.
+
+Each business keeps its files under `storage/app/tenants/{id}/`: `branding/` (uploaded logo, served at
+`/logo`), `backups/`, and `private/` (the default `local` disk, e.g. archived quotation PDFs). Without
+tenancy the same folders sit directly under `storage/app/`. Logos uploaded before this change stay in
+`public/uploads` and keep working until replaced.
+
+Login codes go to each user's own email (set on the Users page), or to the business's fallback mailbox.
+Emails are sent from `MAIL_FROM_ADDRESS` under the business's name, with replies going to the business.
 
 ## Deploying
 

@@ -16,10 +16,24 @@ use Throwable;
 class LoginOtp
 {
     /**
+     * Where the user's codes go: their own email, else the business's mailbox from Settings.
+     */
+    public function recipientFor(User $user): ?string
+    {
+        return ($user->email ?: config('sjpos.otp.email')) ?: null;
+    }
+
+    /**
      * Replace any previous code for the user with a new one and email it.
+     * Callers check recipientFor() first; with no address this returns false.
      */
     public function issue(User $user): bool
     {
+        $recipient = $this->recipientFor($user);
+        if ($recipient === null) {
+            return false;
+        }
+
         $otp = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
 
         OtpCode::where('user_id', $user->id)->delete();
@@ -31,7 +45,7 @@ class LoginOtp
         ]);
 
         try {
-            Mail::to(config('sjpos.otp.email'), $user->username)->send(new LoginOtpMail($user->username, $otp));
+            Mail::to($recipient, $user->display_name)->send(new LoginOtpMail($user->display_name, $otp));
 
             return true;
         } catch (Throwable $e) {
