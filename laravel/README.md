@@ -104,6 +104,50 @@ tenancy the same folders sit directly under `storage/app/`. Logos uploaded befor
 Login codes go to each user's own email (set on the Users page), or to the business's fallback mailbox.
 Emails are sent from `MAIL_FROM_ADDRESS` under the business's name, with replies going to the business.
 
+## Moving an existing install onto tenancy (SJ Technology)
+
+The existing database becomes the first business as it is: nothing is copied, and every step below
+only adds (tables, settings, copied files), so the old setup can be switched back on at any point.
+
+```bash
+php artisan tenants:register-existing sjtechnology --database=<existing db> --name="SJ Technology"
+php artisan tenants:import-files sjtechnology --dry-run   # list what will be copied
+php artisan tenants:import-files sjtechnology             # logo, backups, stored files, sign-in settings
+php artisan tenants:add-domain sjtechnology <old address, e.g. pos.sjtechnology.lk> --primary
+php artisan tenants:verify sjtechnology                   # must end with "No failures."
+```
+
+`tenants:verify` checks migrations, business details, logo, owners, sign-in codes, payment and stock
+consistency, and that an invoice PDF renders. With `--compare=<original db>` (for a move that restores a
+dump into a new database) every table's row count and the money totals must match the original.
+`WARN` lines are worth reading but don't block the move; `FAIL` lines do.
+
+**Practice run on staging first**
+
+1. Staging must run PHP 8.4+ (`php -v`), with `pdo_mysql`, `gd` and `zip`.
+2. Restore the latest production backup into a new database, e.g. `sjpos_rehearsal`.
+3. Deploy this branch; in `.env` set `TENANCY_ENABLED=true`, `TENANCY_BASE_DOMAIN`,
+   `TENANCY_CENTRAL_DOMAINS` and `LANDLORD_DB_*`; then `php artisan config:clear`.
+4. `php artisan migrate --database=landlord --path=database/migrations/landlord`.
+5. Run the five commands above against `sjpos_rehearsal`.
+6. Sign in as an owner, a manager and a staff user; open, create and email an invoice; record and
+   delete a payment; check reports and Settings. Note anything that looks wrong.
+
+**Cutover (after closing time, about 30 minutes)**
+
+1. Switch off the legacy plain-PHP app (or make it read-only): it writes to the same database but skips
+   the stock, tax and payment rules.
+2. `php artisan down`, then take a backup (`php artisan sjpos:backup`) and copy it off the server.
+3. Deploy, set the tenancy `.env` keys as on staging, `php artisan config:clear`, create the landlord tables.
+4. Run the five commands above against the production database.
+5. DNS: point the business subdomain (and keep the old address) at the server.
+6. `php artisan up`. Sign in, record a test payment and delete it again.
+
+**Rolling back:** set `TENANCY_ENABLED=false` and run `php artisan config:clear`. The app is back to one
+business on `DB_DATABASE`. Its backups in `storage/app/backups` were only copied, and the imported logo
+and sign-in settings work the same without tenancy. Keep the pre-cutover backup and the old app's files
+for two weeks.
+
 ## Deploying
 
 1. Point the web server's document root at `laravel/public` (not the repo root).
