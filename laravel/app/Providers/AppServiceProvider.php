@@ -8,6 +8,7 @@ use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Settings;
+use App\Services\Tenancy\TenantManager;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Pagination\Paginator;
 use Illuminate\Support\Facades\Event;
@@ -23,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(Settings::class);
+        $this->app->singleton(TenantManager::class);
     }
 
     /**
@@ -32,8 +34,11 @@ class AppServiceProvider extends ServiceProvider
     {
         Paginator::useBootstrapFive();
 
-        // Business details saved on the Settings page replace the config defaults
-        $this->app->make(Settings::class)->apply();
+        // Business details saved on the Settings page replace the config defaults.
+        // With tenancy on, the business isn't known yet: TenantManager loads them per request.
+        if (! config('tenancy.enabled')) {
+            $this->app->make(Settings::class)->apply();
+        }
 
         // Roles: owners run the business (settings, users, backups, activity log);
         // managers can also delete records and see reports; staff do day-to-day work.

@@ -15,6 +15,39 @@ class Settings
     private const CACHE_KEY = 'app-settings';
 
     /**
+     * The business whose settings these are (with tenancy on); null for a single-business install.
+     */
+    private ?string $scope = null;
+
+    /**
+     * config('sjpos') as shipped, before any saved values were loaded over it.
+     *
+     * @var array<string, mixed>
+     */
+    private array $defaults;
+
+    public function __construct()
+    {
+        $this->defaults = (array) config('sjpos');
+    }
+
+    /**
+     * Read and cache the settings of this business from now on.
+     */
+    public function useScope(?string $tenantId): void
+    {
+        $this->scope = $tenantId;
+    }
+
+    /**
+     * Put config('sjpos') back to the shipped defaults, dropping another business's values.
+     */
+    public function reset(): void
+    {
+        config(['sjpos' => $this->defaults]);
+    }
+
+    /**
      * Saved values, keyed by path. Empty when the settings table doesn't exist yet (before migrating).
      *
      * @return array<string, mixed>
@@ -22,7 +55,7 @@ class Settings
     public function saved(): array
     {
         try {
-            return Cache::rememberForever(self::CACHE_KEY, fn () => Setting::pluck('value', 'key')->all());
+            return Cache::rememberForever($this->cacheKey(), fn () => Setting::pluck('value', 'key')->all());
         } catch (QueryException) {
             return [];
         }
@@ -55,8 +88,16 @@ class Settings
             Setting::updateOrCreate(['key' => $key], ['value' => $value, 'updated_at' => now()]);
         }
 
-        Cache::forget(self::CACHE_KEY);
+        Cache::forget($this->cacheKey());
         $this->apply();
+    }
+
+    /**
+     * Each business caches its settings under its own key, so one never sees another's.
+     */
+    private function cacheKey(): string
+    {
+        return $this->scope === null ? self::CACHE_KEY : "tenant:{$this->scope}:".self::CACHE_KEY;
     }
 
     /**
