@@ -10,6 +10,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentEmailController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\JobNoteController;
+use App\Http\Controllers\LogoController;
 use App\Http\Controllers\OutstandingArController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProductController;
@@ -52,6 +53,7 @@ Route::post('/logout', [LoginController::class, 'destroy'])->middleware('auth')-
 
 Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
     Route::get('/', DashboardController::class)->name('dashboard');
+    Route::get('logo', LogoController::class)->name('logo');
 
     // Everyone signed in: day-to-day work (deleting and merging are below, for managers and owners)
     $resources = [

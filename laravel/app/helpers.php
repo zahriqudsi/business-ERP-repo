@@ -1,5 +1,7 @@
 <?php
 
+use App\Services\Tenancy\TenantManager;
+
 if (! function_exists('currency')) {
     /**
      * The currency symbol from Settings, e.g. "Rs.".
@@ -52,16 +54,43 @@ if (! function_exists('days_badge')) {
     }
 }
 
+if (! function_exists('logo_path')) {
+    /**
+     * The logo file on disk. Uploaded logos ("branding/...") live in the business's own storage;
+     * built-in images and logos uploaded before tenancy ("uploads/...") are under public/.
+     */
+    function logo_path(): string
+    {
+        $logo = (string) config('sjpos.company.logo');
+        $path = str_starts_with($logo, 'branding/')
+            ? app(TenantManager::class)->storagePath($logo)
+            : public_path($logo);
+
+        return is_file($path) ? $path : public_path('assets/img/default-logo.png');
+    }
+}
+
+if (! function_exists('logo_url')) {
+    /**
+     * Where pages load the logo from: the logo route for uploaded logos, else the public file.
+     */
+    function logo_url(): string
+    {
+        $logo = (string) config('sjpos.company.logo');
+
+        return str_starts_with($logo, 'branding/')
+            ? route('logo', ['v' => crc32($logo)])
+            : asset($logo);
+    }
+}
+
 if (! function_exists('logo_data_uri')) {
     /**
      * Logo embedded as a data URI so PDFs don't depend on fetching remote URLs.
      */
     function logo_data_uri(): string
     {
-        $path = public_path(config('sjpos.company.logo'));
-        if (! is_file($path)) {
-            $path = public_path('assets/img/default-logo.png');
-        }
+        $path = logo_path();
 
         return 'data:'.(mime_content_type($path) ?: 'image/png').';base64,'.base64_encode((string) file_get_contents($path));
     }

@@ -26,7 +26,9 @@ class DocumentMail extends Mailable
 
     public function envelope(): Envelope
     {
+        // Sent from the platform's own address (so it passes SPF/DKIM) under the business's name; replies go to the business
         return new Envelope(
+            from: new Address(config('mail.from.address'), config('sjpos.company.name')),
             subject: $this->subjectLine,
             replyTo: [new Address(config('sjpos.company.email'), config('sjpos.company.name'))],
         );

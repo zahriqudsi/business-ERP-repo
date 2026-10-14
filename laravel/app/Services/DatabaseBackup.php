@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Services\Tenancy\TenantManager;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -15,9 +16,14 @@ class DatabaseBackup
 {
     private const ROWS_PER_INSERT = 200;
 
+    public function __construct(private TenantManager $tenancy) {}
+
+    /**
+     * storage/app/backups, or the business's own backups folder with tenancy on.
+     */
     public function directory(): string
     {
-        return storage_path('app/backups');
+        return $this->tenancy->storagePath('backups');
     }
 
     /**

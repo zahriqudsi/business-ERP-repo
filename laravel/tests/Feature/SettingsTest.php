@@ -95,16 +95,47 @@ class SettingsTest extends TestCase
 
         $this->put('/settings', $this->form() + ['logo' => UploadedFile::fake()->image('logo.png', 200, 200)])->assertSessionHasNoErrors();
         $logo = config('sjpos.company.logo');
-        $this->assertStringStartsWith('uploads/logo-', $logo);
-        $this->assertFileExists(public_path($logo));
+        $this->assertStringStartsWith('branding/logo-', $logo);
+        $this->assertFileExists(storage_path('app/'.$logo));
+        $this->assertFileDoesNotExist(public_path($logo));
 
         try {
+            $this->get('/logo')->assertOk()->assertHeader('content-type', 'image/png');
+
             $this->put('/settings', $this->form() + ['remove_logo' => '1'])->assertSessionHasNoErrors();
             $this->assertSame('assets/img/default-logo.png', config('sjpos.company.logo'));
-            $this->assertFileDoesNotExist(public_path($logo));
+            $this->assertFileDoesNotExist(storage_path('app/'.$logo));
         } finally {
-            File::delete(public_path($logo));
+            File::delete(storage_path('app/'.$logo));
         }
+    }
+
+    public function test_replacing_a_logo_uploaded_before_tenancy_deletes_the_old_public_file(): void
+    {
+        $this->signIn();
+        File::ensureDirectoryExists(public_path('uploads'));
+        File::copy(public_path('assets/img/default-logo.png'), public_path('uploads/logo-legacy.png'));
+        $this->app->make(Settings::class)->save(['company.logo' => 'uploads/logo-legacy.png']);
+
+        try {
+            $this->put('/settings', $this->form() + ['logo' => UploadedFile::fake()->image('logo.png', 200, 200)])->assertSessionHasNoErrors();
+
+            $this->assertFileDoesNotExist(public_path('uploads/logo-legacy.png'));
+            $this->assertStringStartsWith('branding/logo-', config('sjpos.company.logo'));
+        } finally {
+            File::delete([public_path('uploads/logo-legacy.png'), storage_path('app/'.config('sjpos.company.logo'))]);
+        }
+    }
+
+    public function test_owner_turns_on_sign_in_codes_with_a_fallback_mailbox(): void
+    {
+        $this->signIn();
+
+        $this->put('/settings', $this->form(['otp' => ['enabled' => '1', 'email' => 'office@acme.lk']]))->assertSessionHasNoErrors();
+
+        $this->assertTrue(config('sjpos.otp.enabled'));
+        $this->assertSame('office@acme.lk', config('sjpos.otp.email'));
+        $this->assertTrue(Setting::findOrFail('otp.enabled')->value);
     }
 
     public function test_only_owners_can_open_settings(): void

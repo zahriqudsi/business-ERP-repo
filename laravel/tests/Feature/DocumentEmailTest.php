@@ -70,6 +70,17 @@ class DocumentEmailTest extends TestCase
         $this->get("/documents/invoice/{$invoice->id}/email")->assertSee('accounts@acme.lk')->assertDontSee('Not emailed yet.');
     }
 
+    public function test_email_is_sent_from_the_platform_address_under_the_business_name_with_replies_to_the_business(): void
+    {
+        $invoice = $this->invoice();
+        config(['mail.from.address' => 'noreply@platform.test']);
+
+        $this->post("/documents/invoice/{$invoice->id}/email", $this->message())->assertRedirect();
+
+        Mail::assertSent(DocumentMail::class, fn (DocumentMail $mail) => $mail->hasFrom('noreply@platform.test', 'SJ Technology')
+            && $mail->hasReplyTo('sjtechnology365@gmail.com', 'SJ Technology'));
+    }
+
     public function test_address_is_saved_on_customer_only_when_asked(): void
     {
         $invoice = $this->invoice();
