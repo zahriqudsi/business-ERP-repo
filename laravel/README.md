@@ -48,7 +48,7 @@ PDFs need the PHP **GD** extension (Dompdf uses it for the PNG logo and signatur
 
 ## Tests
 
-The tests use a separate MySQL database `sjpos_testing` (see `phpunit.xml`) because the app uses
+The tests use a separate MySQL database `sjpos_phpunit` (see `phpunit.xml`) because the app uses
 MySQL-specific SQL (`DATEDIFF`, `FIELD`, `CAST … AS UNSIGNED`).
 
 ```bash

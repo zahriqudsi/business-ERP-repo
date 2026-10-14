@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Services\DocumentPdf;
 use App\Services\StockLedger;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
@@ -48,6 +49,25 @@ class InvoiceController extends Controller
             'invoice_no.unique' => 'Invoice number already exists.',
         ]);
 
+        try {
+            $this->createInvoice($request, $data, $stock);
+        } catch (UniqueConstraintViolationException) {
+            // Someone else saved this number after the form was opened (the unique check above passed for both)
+            throw ValidationException::withMessages(['invoice_no' => 'Invoice number already exists.']);
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Invoice saved successfully.',
+            'redirect' => route('invoices.index'),
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function createInvoice(Request $request, array $data, StockLedger $stock): void
+    {
         DB::transaction(function () use ($request, $data, $stock) {
             $items = $this->lineItems($data);
             $rate = (new Invoice)->rateFor($request->boolean('apply_tax') && config('sjpos.tax.enabled'));
@@ -63,12 +83,6 @@ class InvoiceController extends Controller
 
             $this->saveExtraInfo($invoice, $data['details_type'] ?? null, $data['notes'] ?? null);
         });
-
-        return response()->json([
-            'status' => 'success',
-            'message' => 'Invoice saved successfully.',
-            'redirect' => route('invoices.index'),
-        ]);
     }
 
     /**
@@ -104,13 +118,16 @@ class InvoiceController extends Controller
         $items = $this->lineItems($data);
         $totals = Invoice::taxTotals(array_sum(array_column($items, 'total')), $invoice->rateFor($request->boolean('apply_tax') && $invoice->offersTax()));
 
-        if ($totals['subtotal'] < $invoice->amount_paid) {
-            throw ValidationException::withMessages([
-                'subtotal' => 'The new total is less than the '.rs($invoice->amount_paid).' already paid on this invoice.',
-            ]);
-        }
-
         DB::transaction(function () use ($invoice, $data, $items, $totals, $stock) {
+            // Locked like a new payment locks it, so amount_paid can't change between the check and the save
+            $invoice = Invoice::lockForUpdate()->findOrFail($invoice->id);
+
+            if ($totals['subtotal'] < $invoice->amount_paid) {
+                throw ValidationException::withMessages([
+                    'subtotal' => 'The new total is less than the '.rs($invoice->amount_paid).' already paid on this invoice.',
+                ]);
+            }
+
             $invoice->fill([
                 'customer_name' => $data['customer_name'],
                 'date' => $data['date'],
@@ -137,15 +154,35 @@ class InvoiceController extends Controller
         ]);
     }
 
+    /**
+     * Invoices with payments can't be deleted: the payments would stay counted as income
+     * with nothing to settle. Delete the payments first (which reverses the balance).
+     */
     public function destroy(Invoice $invoice, StockLedger $stock): JsonResponse
     {
-        DB::transaction(function () use ($invoice, $stock) {
+        // Locked like a new payment locks it, so a payment can't arrive between the check and the delete
+        $paymentCount = DB::transaction(function () use ($invoice, $stock) {
+            $invoice = Invoice::lockForUpdate()->findOrFail($invoice->id);
+            $paymentCount = $invoice->payments()->count();
+            if ($paymentCount > 0) {
+                return $paymentCount;
+            }
+
             $stock->forget($invoice);
             $invoice->bankDetail()->delete();
             $invoice->notes()->delete();
             $invoice->items()->delete();
             $invoice->delete();
+
+            return 0;
         });
+
+        if ($paymentCount > 0) {
+            return response()->json([
+                'status' => 'error',
+                'message' => "Invoice #{$invoice->invoice_no} has {$paymentCount} ".str('payment')->plural($paymentCount).'. Delete '.($paymentCount === 1 ? 'it' : 'them').' first, then delete the invoice.',
+            ], 422);
+        }
 
         return response()->json(['status' => 'success', 'message' => 'Invoice deleted successfully.']);
     }

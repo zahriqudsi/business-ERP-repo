@@ -50,6 +50,14 @@ class Quotation extends Model
         ];
     }
 
+    /**
+     * The invoice this quotation was converted into, if any.
+     */
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
+
     public function items(): HasMany
     {
         return $this->hasMany(QuotationItem::class)->orderBy('item_no')->orderBy('id');

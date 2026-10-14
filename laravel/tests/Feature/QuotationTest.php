@@ -102,6 +102,53 @@ class QuotationTest extends TestCase
         $this->assertSame(today()->toDateString(), $invoice->date->toDateString());
     }
 
+    public function test_converted_quotation_cannot_be_converted_again(): void
+    {
+        $this->postJson('/quotations', $this->payload());
+        $quotation = Quotation::firstOrFail();
+        $this->post("/quotations/{$quotation->id}/convert");
+        $invoice = Invoice::firstOrFail();
+
+        $this->post("/quotations/{$quotation->id}/convert")
+            ->assertSessionHasErrors(['quotation' => "Quotation #1180 was already converted to invoice #{$invoice->invoice_no}."]);
+
+        $this->assertDatabaseCount('invoices', 1);
+        $this->assertDatabaseCount('invoice_items', 2);
+        $this->assertSame($invoice->id, $quotation->refresh()->invoice_id);
+
+        $this->get("/quotations/{$quotation->id}?ajax=1")
+            ->assertOk()
+            ->assertSee("Converted to Invoice #{$invoice->invoice_no}")
+            ->assertDontSee('Convert to Invoice');
+    }
+
+    public function test_quotation_can_be_converted_again_after_its_invoice_is_deleted(): void
+    {
+        $this->postJson('/quotations', $this->payload());
+        $quotation = Quotation::firstOrFail();
+        $this->post("/quotations/{$quotation->id}/convert");
+        $this->deleteJson('/invoices/'.Invoice::firstOrFail()->id)->assertOk();
+
+        $this->post("/quotations/{$quotation->id}/convert")
+            ->assertRedirect(route('invoices.index'))
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseCount('invoices', 1);
+        $this->assertSame(Invoice::firstOrFail()->id, $quotation->refresh()->invoice_id);
+    }
+
+    public function test_item_rows_with_missing_values_are_rejected(): void
+    {
+        $this->postJson('/quotations', $this->payload(['quantity' => [2], 'unit_price' => [45000]]))
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'quantity' => 'The quantity field must contain 2 items.',
+                'unit_price' => 'The unit price field must contain 2 items.',
+            ]);
+
+        $this->assertDatabaseCount('quotations', 0);
+    }
+
     public function test_destroy(): void
     {
         $this->postJson('/quotations', $this->payload());

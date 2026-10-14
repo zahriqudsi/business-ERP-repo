@@ -83,13 +83,19 @@
             <i class="bi bi-envelope me-2"></i>Email
         </a>
 
-        <form method="POST" action="{{ route('quotations.convert', $quotation) }}" class="d-inline"
-              onsubmit="return confirm('Create a new invoice from quotation #{{ $quotation->quotation_no }}?')">
-            @csrf
-            <button type="submit" class="btn btn-success px-4 py-2 fw-bold shadow-sm">
-                <i class="bi bi-arrow-repeat me-2"></i>Convert to Invoice
-            </button>
-        </form>
+        @if ($quotation->invoice)
+            <a href="{{ route('invoices.show', $quotation->invoice) }}" class="btn btn-outline-success px-4 py-2 fw-bold">
+                <i class="bi bi-check2-circle me-2"></i>Converted to Invoice #{{ $quotation->invoice->invoice_no }}
+            </a>
+        @else
+            <form method="POST" action="{{ route('quotations.convert', $quotation) }}" class="d-inline"
+                  onsubmit="return confirm('Create a new invoice from quotation #{{ $quotation->quotation_no }}?')">
+                @csrf
+                <button type="submit" class="btn btn-success px-4 py-2 fw-bold shadow-sm">
+                    <i class="bi bi-arrow-repeat me-2"></i>Convert to Invoice
+                </button>
+            </form>
+        @endif
 
         <button type="button" onclick="window.print()" class="btn btn-outline-secondary px-4 py-2 fw-bold">
             <i class="bi bi-printer me-2"></i>Print

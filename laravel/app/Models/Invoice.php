@@ -85,10 +85,16 @@ class Invoice extends Model
 
     /**
      * invoice_no is a varchar, so compare numerically rather than as text.
+     * With $lock (inside a transaction), concurrent callers wait so they can't take the same number.
      */
-    public static function nextNumber(): int
+    public static function nextNumber(bool $lock = false): int
     {
-        $last = (int) static::query()->max(DB::raw('CAST(invoice_no AS UNSIGNED)'));
+        $query = static::query();
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        $last = (int) $query->max(DB::raw('CAST(invoice_no AS UNSIGNED)'));
 
         return max($last + 1, (int) config('sjpos.invoice.first_number'));
     }

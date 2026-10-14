@@ -47,7 +47,7 @@ class QuotationController extends Controller
 
     public function show(Request $request, Quotation $quotation): View
     {
-        $quotation->load('items');
+        $quotation->load(['items', 'invoice:id,invoice_no']);
 
         return view($request->boolean('ajax') ? 'quotations._document' : 'quotations.show', compact('quotation'));
     }
@@ -96,15 +96,24 @@ class QuotationController extends Controller
     public function convert(Quotation $quotation, StockLedger $stock): RedirectResponse
     {
         $invoice = DB::transaction(function () use ($quotation, $stock) {
+            // Locked so a double click can't convert the same quotation twice
+            $quotation = Quotation::with('invoice:id,invoice_no')->lockForUpdate()->findOrFail($quotation->id);
+            if ($quotation->invoice) {
+                throw ValidationException::withMessages([
+                    'quotation' => "Quotation #{$quotation->quotation_no} was already converted to invoice #{$quotation->invoice->invoice_no}.",
+                ]);
+            }
+
             $items = $quotation->items()->get(['product_id', 'item_no', 'description', 'brand', 'quantity', 'unit_price', 'total']);
 
             $invoice = Invoice::create([
-                'invoice_no' => (string) Invoice::nextNumber(),
+                'invoice_no' => (string) Invoice::nextNumber(lock: true),
                 'customer_name' => $quotation->prepared_for,
                 'date' => now()->toDateString(),
             ] + Invoice::taxTotals($items->sum('total'), (float) $quotation->tax_rate));
             $invoice->items()->createMany($items->toArray());
             $stock->record($invoice);
+            $quotation->invoice()->associate($invoice)->save();
 
             return $invoice;
         });
@@ -124,13 +133,14 @@ class QuotationController extends Controller
             'terms_conditions' => ['nullable', 'string'],
             'item_no' => ['required', 'array', 'min:1'],
             'item_no.*' => ['required', 'string', 'max:50'],
-            'description' => ['required', 'array'],
+            // One description, brand, quantity and price per item row
+            'description' => ['required', 'array', 'size:'.count((array) $request->input('item_no'))],
             'description.*' => ['required', 'string'],
-            'brand' => ['required', 'array'],
+            'brand' => ['required', 'array', 'size:'.count((array) $request->input('item_no'))],
             'brand.*' => ['required', 'string', 'max:255'],
-            'quantity' => ['required', 'array'],
+            'quantity' => ['required', 'array', 'size:'.count((array) $request->input('item_no'))],
             'quantity.*' => ['required', 'integer', 'min:1'],
-            'unit_price' => ['required', 'array'],
+            'unit_price' => ['required', 'array', 'size:'.count((array) $request->input('item_no'))],
             'unit_price.*' => ['required', 'numeric', 'min:0'],
             'product_id' => ['array'],
             'product_id.*' => ['nullable', 'integer', 'exists:products,id'],

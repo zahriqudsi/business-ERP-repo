@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Invoice;
+use App\Models\PaymentReceived;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class InvoiceTest extends TestCase
@@ -144,6 +146,42 @@ class InvoiceTest extends TestCase
         $this->assertDatabaseCount('invoices', 0);
         $this->assertDatabaseCount('invoice_items', 0);
         $this->assertDatabaseCount('invoice_notes', 0);
+    }
+
+    public function test_destroy_is_refused_while_the_invoice_has_payments(): void
+    {
+        $this->postJson('/invoices', $this->payload());
+        $invoice = Invoice::firstOrFail();
+        PaymentReceived::create([
+            'invoice_id' => $invoice->id, 'customer_name' => 'Acme Ltd', 'amount' => 5000,
+            'payment_date' => '2026-10-05', 'method' => 'cash',
+        ]);
+
+        $this->deleteJson("/invoices/{$invoice->id}")
+            ->assertUnprocessable()
+            ->assertJson([
+                'status' => 'error',
+                'message' => 'Invoice #1500 has 1 payment. Delete it first, then delete the invoice.',
+            ]);
+
+        $this->assertModelExists($invoice);
+        $this->assertDatabaseCount('invoice_items', 2);
+        $this->assertDatabaseCount('payments_received', 1);
+    }
+
+    public function test_store_rejects_a_number_saved_by_someone_else_after_validation(): void
+    {
+        // Another user saves the same number between this request's unique check and its insert
+        Invoice::creating(function (Invoice $invoice) {
+            DB::table('invoices')->insert(['invoice_no' => $invoice->invoice_no, 'customer_name' => 'Other user', 'date' => '2026-10-01', 'subtotal' => 1]);
+        });
+
+        $this->postJson('/invoices', $this->payload())
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['invoice_no' => 'Invoice number already exists.']);
+
+        $this->assertDatabaseCount('invoices', 0);
+        $this->assertDatabaseCount('invoice_items', 0);
     }
 
     public function test_outstanding_ar_lists_and_drills_down(): void

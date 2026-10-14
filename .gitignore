@@ -1,0 +1,4 @@
+# Database dumps hold customer data and password hashes: never commit them
+*.sql
+*.sql.gz
+*.sql.zip
