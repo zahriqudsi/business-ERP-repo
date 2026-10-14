@@ -50,6 +50,8 @@ PDFs need the PHP **GD** extension (Dompdf uses it for the PNG logo and signatur
 
 The tests use a separate MySQL database `sjpos_phpunit` (see `phpunit.xml`) because the app uses
 MySQL-specific SQL (`DATEDIFF`, `FIELD`, `CAST … AS UNSIGNED`).
+The tenancy tests also create `sjpos_phpunit_landlord` and `sjpos_phpunit_tenant_*` databases
+themselves (and drop them afterwards), so the test MySQL user needs `CREATE`/`DROP` rights.
 
 ```bash
 php artisan test
@@ -63,6 +65,36 @@ php artisan test
 | `OTP_ENABLED` | `true` to require the emailed login code (was the `OTP_ENABLED` constant) |
 | `OTP_EMAIL` | Mailbox that receives login codes |
 | `MAIL_MAILER=mailgun`, `MAILGUN_DOMAIN`, `MAILGUN_SECRET`, `MAILGUN_ENDPOINT` | Mailgun sending (`api.eu.mailgun.net` for EU) |
+| `TENANCY_ENABLED` | `true` to serve many businesses, each with its own database (see below) |
+
+## Multi-tenancy
+
+With `TENANCY_ENABLED=false` (the default) nothing changes: one business on `DB_DATABASE`.
+
+With it on, the host picks the business: `acme.{TENANCY_BASE_DOMAIN}`, or a custom domain from
+the `domains` table. Platform data lives in the landlord database (`LANDLORD_DB_*`); each
+business's records live in its own database, which the default `mysql` connection is pointed at
+per request. Sessions are tied to the business they started on.
+
+```bash
+# Once: create the landlord database, then its tables
+php artisan migrate --database=landlord --path=database/migrations/landlord
+
+# A new business (with an owner login)
+php artisan tenants:create acme --name="Acme Traders" --owner=admin
+
+# An existing single-business database, registered without copying it
+php artisan tenants:register-existing sjtechnology --database=sjpos --name="SJ Technology"
+
+# On every deploy, instead of `php artisan migrate`
+php artisan tenants:migrate
+
+# Any command, once per business
+php artisan tenants:run "sjpos:user admin --password=..." --tenant=acme
+```
+
+Business databases use the normal migrations in `database/migrations`; the landlord's are in
+`database/migrations/landlord`.
 
 ## Deploying
 

@@ -13,5 +13,6 @@ Artisan::command('sjpos:backup', function (DatabaseBackup $backups) {
     $this->info('Backup written: '.$backups->create());
 })->purpose('Back up the database to storage/app/backups');
 
-// Runs when `php artisan schedule:run` is called every minute (Task Scheduler / cron)
-Schedule::command('sjpos:backup')->dailyAt('23:30');
+// Runs when `php artisan schedule:run` is called every minute (Task Scheduler / cron).
+// With tenancy on, each business's database is backed up in turn.
+Schedule::command(config('tenancy.enabled') ? 'tenants:run sjpos:backup' : 'sjpos:backup')->dailyAt('23:30');
