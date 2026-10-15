@@ -6,6 +6,12 @@
       "runtimeExecutable": "cmd",
       "runtimeArgs": ["/c", "set DB_DATABASE=sjpos_copy&& cd public&& php -S 127.0.0.1:8001 ../vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php"],
       "port": 8001
+    },
+    {
+      "name": "billora-site",
+      "runtimeExecutable": "php",
+      "runtimeArgs": ["artisan", "serve", "--host=localhost", "--port=8002"],
+      "port": 8002
     }
   ]
 }

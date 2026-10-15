@@ -1,9 +1,12 @@
-@extends('layouts.platform')
+@extends('layouts.marketing')
 
 @section('title', 'Privacy Policy')
-@section('brand_url', route('central.home'))
+
+@section('no_cta', true)
 
 @section('content')
+<div class="bl-hero py-5">
+<div class="container py-lg-4">
 @php
     $operator = config('tenancy.operator');
     $product = config('sjpos.product_name');
@@ -38,4 +41,6 @@
         <p>Users can ask their business's owner to correct or remove their details. Owners can ask us for a copy of their business's data, or to close the account.@if ($operator['email']) Contact us at <a href="mailto:{{ $operator['email'] }}">{{ $operator['email'] }}</a>.@endif</p>
     </div>
 </article>
+</div>
+</div>
 @endsection

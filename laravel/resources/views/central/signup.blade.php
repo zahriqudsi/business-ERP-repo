@@ -1,17 +1,16 @@
-@extends('layouts.platform')
+@extends('layouts.marketing')
 
 @section('title', 'Start your free trial')
-@section('brand_url', route('central.home'))
 
-@section('nav')
-    <a href="{{ route('central.find') }}" class="btn btn-outline-secondary btn-sm">Sign in</a>
-@endsection
+@section('no_cta', true)
 
 @section('content')
+<div class="bl-hero py-5">
+<div class="container py-lg-4">
 <div class="row justify-content-center">
     <div class="col-md-8 col-lg-6">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body p-4 p-md-5">
+        <div class="bl-form-card">
+            <div>
                 <h1 class="h3 fw-bold mb-1">Start your free trial</h1>
                 <p class="text-body-secondary mb-4">Your business gets its own address and its own private data.</p>
 
@@ -72,5 +71,7 @@
             </div>
         </div>
     </div>
+</div>
+</div>
 </div>
 @endsection

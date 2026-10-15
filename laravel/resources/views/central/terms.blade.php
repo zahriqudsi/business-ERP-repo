@@ -1,9 +1,12 @@
-@extends('layouts.platform')
+@extends('layouts.marketing')
 
 @section('title', 'Terms of Service')
-@section('brand_url', route('central.home'))
+
+@section('no_cta', true)
 
 @section('content')
+<div class="bl-hero py-5">
+<div class="container py-lg-4">
 @php
     $operator = config('tenancy.operator');
     $product = config('sjpos.product_name');
@@ -40,4 +43,6 @@
         <p>These terms are governed by the laws of {{ $operator['country'] }}.@if ($operator['email']) Questions: <a href="mailto:{{ $operator['email'] }}">{{ $operator['email'] }}</a>.@endif</p>
     </div>
 </article>
+</div>
+</div>
 @endsection

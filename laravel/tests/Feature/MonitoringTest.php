@@ -39,7 +39,7 @@ class MonitoringTest extends TestCase
         $emails = $this->sentEmails();
         $this->assertCount(1, $emails);
         $message = $emails[0]->getOriginalMessage();
-        $this->assertSame('[Business Manager] A background job failed', $message->getSubject());
+        $this->assertSame('[Billora] A background job failed', $message->getSubject());
         $this->assertEqualsCanonicalizing(['ops@platform.test', 'zahri@platform.test'], array_map(fn ($address) => $address->getAddress(), $message->getTo()));
         $this->assertStringContainsString('Mail server unreachable', $message->getTextBody());
     }
