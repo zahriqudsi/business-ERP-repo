@@ -39,8 +39,10 @@ class SignupController extends Controller
             'username' => ['required', 'string', 'max:100', 'regex:/^[A-Za-z0-9._-]+$/'],
             'email' => ['required', 'email', 'max:255'],
             'password' => ['required', 'confirmed', Password::min(8)],
+            'accept_terms' => ['accepted'],
         ], [
             'username.regex' => 'The username may only use letters, numbers, dots, dashes and underscores.',
+            'accept_terms.accepted' => 'Please accept the Terms of Service and Privacy Policy to sign up.',
         ]);
         $data['slug'] = Str::lower(trim($data['slug']));
 
@@ -69,7 +71,7 @@ class SignupController extends Controller
             $settings->save(['company.name' => trim($data['business_name']), 'company.email' => $data['email']]);
         });
 
-        PlatformActivity::record('signed_up', "{$tenant->name} signed up as {$tenant->slug}", $tenant, data: ['owner_email' => $data['email']]);
+        PlatformActivity::record('signed_up', "{$tenant->name} signed up as {$tenant->slug}", $tenant, data: ['owner_email' => $data['email'], 'terms_accepted_at' => now()->toIso8601String(), 'ip' => $request->ip()]);
 
         try {
             Mail::to($data['email'], $data['name'])->send(new WelcomeMail($tenant->name, $tenant->url('login'), $data['username']));

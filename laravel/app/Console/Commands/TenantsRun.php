@@ -6,6 +6,7 @@ use App\Models\Landlord\Tenant;
 use App\Services\Tenancy\TenantManager;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Artisan;
+use Throwable;
 
 /**
  * Run any artisan command as each business, e.g.
@@ -32,7 +33,14 @@ class TenantsRun extends Command
         $failed = 0;
         foreach ($tenants as $tenant) {
             $this->line("<info>{$tenant->slug}</info>");
-            $exitCode = $tenancy->run($tenant, fn () => Artisan::call((string) $this->argument('line'), [], $this->output));
+            // One business failing (e.g. its backup) must not stop the others
+            try {
+                $exitCode = $tenancy->run($tenant, fn () => Artisan::call((string) $this->argument('line'), [], $this->output));
+            } catch (Throwable $e) {
+                report($e);
+                $this->error("  Failed: {$e->getMessage()}");
+                $exitCode = self::FAILURE;
+            }
             $failed += $exitCode === self::SUCCESS ? 0 : 1;
         }
 

@@ -37,7 +37,8 @@ return [
 
         'database' => [
             'driver' => 'database',
-            'connection' => env('DB_QUEUE_CONNECTION'),
+            // With tenancy the default connection is the current business, so jobs live in the landlord database
+            'connection' => env('DB_QUEUE_CONNECTION', env('TENANCY_ENABLED', false) ? 'landlord' : null),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
             'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
@@ -103,7 +104,7 @@ return [
     */
 
     'batching' => [
-        'database' => env('DB_CONNECTION', 'sqlite'),
+        'database' => env('TENANCY_ENABLED', false) ? 'landlord' : env('DB_CONNECTION', 'sqlite'),
         'table' => 'job_batches',
     ],
 
@@ -122,7 +123,7 @@ return [
 
     'failed' => [
         'driver' => env('QUEUE_FAILED_DRIVER', 'database-uuids'),
-        'database' => env('DB_CONNECTION', 'sqlite'),
+        'database' => env('TENANCY_ENABLED', false) ? 'landlord' : env('DB_CONNECTION', 'sqlite'),
         'table' => 'failed_jobs',
     ],
 

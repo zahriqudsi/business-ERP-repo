@@ -7,12 +7,18 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Supplier;
 use App\Models\User;
+use App\Services\Alerts;
 use App\Services\Settings;
+use App\Services\Tenancy\TenantAwareQueue;
 use App\Services\Tenancy\TenantManager;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Foundation\Events\DiagnosingHealth;
 use Illuminate\Pagination\Paginator;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
@@ -25,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(Settings::class);
         $this->app->singleton(TenantManager::class);
+        $this->app->singleton(TenantAwareQueue::class);
     }
 
     /**
@@ -39,6 +46,28 @@ class AppServiceProvider extends ServiceProvider
         if (! config('tenancy.enabled')) {
             $this->app->make(Settings::class)->apply();
         }
+
+        // Queued jobs run as the business they were queued in
+        if (config('tenancy.enabled')) {
+            $this->app->make(TenantAwareQueue::class)->register();
+        }
+
+        // A job that gave up (after its retries) is reported to the people who run the app
+        Queue::failing(function (JobFailed $event) {
+            $tenantId = $event->job->payload()['tenant_id'] ?? null;
+            $this->app->make(Alerts::class)->send(
+                'A background job failed',
+                "Job: {$event->job->resolveName()}\n".($tenantId ? "Business: {$tenantId}\n" : '')."Error: {$event->exception->getMessage()}\n\nRetry with: php artisan queue:retry all",
+            );
+        });
+
+        // /up (for an uptime monitor) also fails when a database can't be reached
+        Event::listen(DiagnosingHealth::class, function () {
+            DB::connection()->getPdo();
+            if (config('tenancy.enabled')) {
+                DB::connection(config('tenancy.landlord_connection'))->getPdo();
+            }
+        });
 
         // Roles: owners run the business (settings, users, backups, activity log);
         // managers can also delete records and see reports; staff do day-to-day work.

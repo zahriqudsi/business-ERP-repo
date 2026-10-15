@@ -31,6 +31,13 @@ return [
     // A business's database is named prefix + its id, never its (changeable) subdomain
     'database_prefix' => env('TENANCY_DATABASE_PREFIX', 'tenant_'),
 
+    // Who runs the platform, as named on the Terms and Privacy pages
+    'operator' => [
+        'name' => env('TENANCY_OPERATOR_NAME') ?: env('PRODUCT_NAME', 'Business Manager'),
+        'email' => env('TENANCY_SUPPORT_EMAIL', ''),
+        'country' => env('TENANCY_OPERATOR_COUNTRY', 'Sri Lanka'),
+    ],
+
     'billing' => [
         // Days a business keeps working after its trial or paid time ends, before it is paused
         'grace_days' => (int) env('TENANCY_BILLING_GRACE_DAYS', 7),
