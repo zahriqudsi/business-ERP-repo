@@ -16,3 +16,8 @@ Artisan::command('sjpos:backup', function (DatabaseBackup $backups) {
 // Runs when `php artisan schedule:run` is called every minute (Task Scheduler / cron).
 // With tenancy on, each business's database is backed up in turn.
 Schedule::command(config('tenancy.enabled') ? 'tenants:run sjpos:backup' : 'sjpos:backup')->dailyAt('23:30');
+
+// With tenancy on: trials and paid time that ran out become past due, then paused after the grace period
+if (config('tenancy.enabled')) {
+    Schedule::command('tenants:check-billing')->dailyAt('01:00')->withoutOverlapping();
+}

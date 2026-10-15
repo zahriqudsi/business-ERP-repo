@@ -124,6 +124,23 @@ the owner** for support: a one-time link that works for one minute, recorded in 
 activity log and the platform log. New sign-ups need wildcard DNS (`*.{base domain}`), a wildcard SSL
 certificate, and a landlord MySQL user allowed to create `tenant_...` databases.
 
+## Plans, limits and billing (tenancy only)
+
+Plans are set up in the admin area (**Plans**): monthly and yearly price and limits for active users
+and invoices a month (empty = unlimited). A business without a plan has no limits. Reaching a limit
+blocks adding more (a new user, the next invoice, converting a quotation); what exists keeps working.
+The monthly count uses invoice dates. New sign-ups start on the plan in `TENANCY_SIGNUP_PLAN`.
+
+Billing is manual for now. On a business's page in the admin area, staff **record a payment** (amount,
+months, method, reference): it extends the paid time from today or from the end of time already paid
+for, ends a trial, and resumes a business paused for not paying (never one staff paused by hand).
+A daily check, `tenants:check-billing` (scheduled at 01:00), makes businesses whose trial or paid time
+ran out **past due**, and pauses them after `TENANCY_BILLING_GRACE_DAYS`. Owners see their plan, usage,
+payments and `TENANCY_PAYMENT_INSTRUCTIONS` under **Plan & billing**, with a reminder on trial or past due.
+
+Staff can also **download a backup** of any business and **close** an account; its data is kept for
+`TENANCY_RETENTION_DAYS` (the notice page shows until when), and **Re-open** reverses it.
+
 ## Moving an existing install onto tenancy (SJ Technology)
 
 The existing database becomes the first business as it is: nothing is copied, and every step below

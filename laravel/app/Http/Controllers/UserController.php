@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\Tenancy\PlanLimits;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -28,9 +29,11 @@ class UserController extends Controller
         return view('users.form', ['user' => new User]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, PlanLimits $limits): RedirectResponse
     {
-        $user = User::create($this->validated($request));
+        $data = $this->validated($request);
+        $limits->ensureAllows('users', 'username');
+        $user = User::create($data);
 
         return redirect()->route('users.index')->with('success', "User “{$user->username}” added.");
     }
@@ -40,9 +43,14 @@ class UserController extends Controller
         return view('users.form', compact('user'));
     }
 
-    public function update(Request $request, User $user): RedirectResponse
+    public function update(Request $request, User $user, PlanLimits $limits): RedirectResponse
     {
         $data = $this->validated($request, $user);
+
+        // Switching an account back on counts towards the plan's user limit like a new one
+        if (! $user->is_active && $data['is_active']) {
+            $limits->ensureAllows('users', 'is_active');
+        }
 
         $losesOwnerAccess = $user->isOwner() && $user->is_active && ($data['role'] !== 'owner' || ! $data['is_active']);
         if ($losesOwnerAccess && User::where('role', 'owner')->where('is_active', true)->count() === 1) {

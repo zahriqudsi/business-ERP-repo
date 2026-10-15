@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OtpController;
 use App\Http\Controllers\Auth\SupportSignInController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\Central\RedirectToPlatformController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
@@ -148,6 +149,11 @@ Route::middleware(['auth', EnsureUserIsActive::class])->group(function () {
         Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');
 
         Route::resource('users', UserController::class)->except(['show', 'destroy']);
+
+        // The business's plan, limits and payments to the platform (tenancy only)
+        if (config('tenancy.enabled')) {
+            Route::get('billing', BillingController::class)->name('billing.show');
+        }
 
         Route::get('backups', [BackupController::class, 'index'])->name('backups.index');
         Route::post('backups', [BackupController::class, 'store'])->name('backups.store');

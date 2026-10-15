@@ -4,11 +4,7 @@
 @section('brand_url', route('admin.tenants.index'))
 
 @section('nav')
-    <span class="navbar-text small me-2">{{ auth('platform')->user()->name }}</span>
-    <form method="POST" action="{{ route('admin.logout') }}" class="m-0">
-        @csrf
-        <button type="submit" class="btn btn-outline-secondary btn-sm">Sign out</button>
-    </form>
+    @include('admin._nav')
 @endsection
 
 @section('content')
@@ -33,7 +29,7 @@
                 @forelse ($tenants as $tenant)
                     <tr>
                         <td>
-                            <div class="fw-semibold">{{ $tenant->name }}</div>
+                            <a href="{{ route('admin.tenants.show', $tenant) }}" class="fw-semibold text-decoration-none">{{ $tenant->name }}</a>
                             <div class="small text-body-secondary">
                                 {{ $tenant->slug }}.{{ config('tenancy.base_domain') }}
                                 @foreach ($tenant->domains as $domain) · {{ $domain->domain }} @endforeach
@@ -42,8 +38,8 @@
                         </td>
                         <td>
                             <span class="badge text-bg-{{ $badges[$tenant->status] ?? 'secondary' }}">{{ str_replace('_', ' ', $tenant->status) }}</span>
-                            @if ($tenant->status === 'trial' && $tenant->trial_ends_at)
-                                <div class="small text-body-secondary">ends {{ $tenant->trial_ends_at->format('j M') }}</div>
+                            @if ($tenant->billingDueAt())
+                                <div class="small text-body-secondary">{{ $tenant->paid_until ? 'paid until' : 'trial ends' }} {{ $tenant->billingDueAt()->format('j M Y') }}</div>
                             @endif
                         </td>
                         <td>

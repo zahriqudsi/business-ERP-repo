@@ -12,13 +12,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 /**
  * A business using the platform. Its records live in its own database ($database).
  */
 #[Connection('landlord')]
 #[Table('tenants')]
-#[Fillable(['name', 'slug', 'database', 'status', 'plan_id', 'trial_ends_at', 'owner_email', 'timezone', 'suspended_at', 'data_purge_after'])]
+#[Fillable(['name', 'slug', 'database', 'status', 'plan_id', 'trial_ends_at', 'paid_until', 'owner_email', 'timezone', 'suspended_at', 'suspended_reason', 'data_purge_after'])]
 class Tenant extends Model
 {
     /** @use HasFactory<TenantFactory> */
@@ -40,6 +41,7 @@ class Tenant extends Model
     {
         return [
             'trial_ends_at' => 'datetime',
+            'paid_until' => 'datetime',
             'suspended_at' => 'datetime',
             'data_purge_after' => 'datetime',
         ];
@@ -53,6 +55,20 @@ class Tenant extends Model
     public function domains(): HasMany
     {
         return $this->hasMany(Domain::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(TenantPayment::class);
+    }
+
+    /**
+     * When the business must have paid by: the end of what it paid for, else the end of its trial.
+     * Null means it is never billed (e.g. the platform's own business).
+     */
+    public function billingDueAt(): ?Carbon
+    {
+        return $this->paid_until ?? $this->trial_ends_at;
     }
 
     public function isUsable(): bool

@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\Quotation;
 use App\Services\DocumentPdf;
 use App\Services\StockLedger;
+use App\Services\Tenancy\PlanLimits;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -93,8 +94,10 @@ class QuotationController extends Controller
     /**
      * Create a new invoice from the quotation's customer and items.
      */
-    public function convert(Quotation $quotation, StockLedger $stock): RedirectResponse
+    public function convert(Quotation $quotation, StockLedger $stock, PlanLimits $limits): RedirectResponse
     {
+        $limits->ensureAllows('invoices_per_month', 'quotation');
+
         $invoice = DB::transaction(function () use ($quotation, $stock) {
             // Locked so a double click can't convert the same quotation twice
             $quotation = Quotation::with('invoice:id,invoice_no')->lockForUpdate()->findOrFail($quotation->id);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Central;
 
 use App\Http\Controllers\Controller;
 use App\Mail\WelcomeMail;
+use App\Models\Landlord\Plan;
 use App\Models\Landlord\PlatformActivity;
 use App\Models\User;
 use App\Services\Settings;
@@ -50,6 +51,11 @@ class SignupController extends Controller
             throw ValidationException::withMessages(collect($e->errors())->mapWithKeys(
                 fn (array $messages, string $field) => [$field === 'name' ? 'business_name' : $field => $messages],
             )->all());
+        }
+
+        // New sign-ups start their trial on the configured plan, if it exists
+        if ($signupPlan = Plan::where('code', config('tenancy.billing.signup_plan'))->where('is_active', true)->first()) {
+            $tenant->update(['plan_id' => $signupPlan->id]);
         }
 
         $tenancy->run($tenant, function () use ($data, $settings) {
