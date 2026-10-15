@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Landlord\PlatformAdmin;
 use App\Models\User;
 
 return [
@@ -42,6 +43,12 @@ return [
             'driver' => 'session',
             'provider' => 'users',
         ],
+
+        // Platform staff in the admin area (landlord database), never a business's users
+        'platform' => [
+            'driver' => 'session',
+            'provider' => 'platform_admins',
+        ],
     ],
 
     /*
@@ -65,6 +72,11 @@ return [
         'users' => [
             'driver' => 'eloquent',
             'model' => env('AUTH_MODEL', User::class),
+        ],
+
+        'platform_admins' => [
+            'driver' => 'eloquent',
+            'model' => PlatformAdmin::class,
         ],
 
         // 'users' => [

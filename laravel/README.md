@@ -104,6 +104,26 @@ tenancy the same folders sit directly under `storage/app/`. Logos uploaded befor
 Login codes go to each user's own email (set on the Users page), or to the business's fallback mailbox.
 Emails are sent from `MAIL_FROM_ADDRESS` under the business's name, with replies going to the business.
 
+## Platform pages and admin (tenancy only)
+
+The first host in `TENANCY_CENTRAL_DOMAINS` is the platform's own site: a landing page, **sign-up** (creates
+the business database, its owner login and name, then sends a welcome email) and **find my business**
+(emails an owner their sign-in addresses). Other central hosts, e.g. `www.`, redirect there. Paused,
+closed or not-yet-ready businesses show a notice page instead of their pages.
+
+The admin area lives on `TENANCY_ADMIN_DOMAIN` (default `admin.{TENANCY_BASE_DOMAIN}`), with its own
+logins in the landlord database:
+
+```bash
+php artisan migrate --database=landlord --path=database/migrations/landlord   # new tables
+php artisan platform:admin you@yourcompany.com --name="Your Name"           # prompts for a password (12+ characters)
+```
+
+There, staff list and search businesses, pause and resume them, change their plan, and **sign in as
+the owner** for support: a one-time link that works for one minute, recorded in the business's
+activity log and the platform log. New sign-ups need wildcard DNS (`*.{base domain}`), a wildcard SSL
+certificate, and a landlord MySQL user allowed to create `tenant_...` databases.
+
 ## Moving an existing install onto tenancy (SJ Technology)
 
 The existing database becomes the first business as it is: nothing is copied, and every step below

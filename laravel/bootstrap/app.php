@@ -20,8 +20,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // ...and before sign-in is checked, or a session from another business would already count as signed in
         $middleware->prependToPriorityList(before: AuthenticatesRequests::class, prepend: BindSessionToTenant::class);
 
-        $middleware->redirectGuestsTo(fn () => route('login'));
-        $middleware->redirectUsersTo(fn () => route('dashboard'));
+        // The admin area (tenancy only) has its own sign-in page
+        $isAdminArea = fn (Request $request) => config('tenancy.enabled') && $request->getHost() === config('tenancy.admin_domain');
+        $middleware->redirectGuestsTo(fn (Request $request) => $isAdminArea($request) ? route('admin.login') : route('login'));
+        $middleware->redirectUsersTo(fn (Request $request) => $isAdminArea($request) ? route('admin.tenants.index') : route('dashboard'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

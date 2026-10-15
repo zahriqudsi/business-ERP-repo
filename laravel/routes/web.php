@@ -4,7 +4,9 @@ use App\Http\Controllers\AccountController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\OtpController;
+use App\Http\Controllers\Auth\SupportSignInController;
 use App\Http\Controllers\BackupController;
+use App\Http\Controllers\Central\RedirectToPlatformController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DocumentEmailController;
@@ -21,12 +23,39 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\SupplierController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VendorBillController;
+use App\Http\Middleware\BindSessionToTenant;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\IdentifyTenant;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Record ids are numeric; this also stops e.g. /invoices/list_invoices.php matching invoices/{invoice}
 Route::patterns(array_fill_keys(['invoice', 'quotation', 'job', 'purchase', 'bill', 'customer', 'supplier', 'product', 'user', 'id'], '[0-9]+'));
+
+/*
+|--------------------------------------------------------------------------
+| Platform pages (tenancy only)
+|--------------------------------------------------------------------------
+|
+| Registered first and tied to their domains, so on the platform and admin domains they win over
+| the business routes below, which answer every other host. They belong to no business.
+|
+*/
+
+if (config('tenancy.enabled')) {
+    Route::withoutMiddleware([IdentifyTenant::class, BindSessionToTenant::class])->group(function () {
+        Route::domain(config('tenancy.central_domains')[0] ?? 'localhost')->group(base_path('routes/central.php'));
+        Route::domain(config('tenancy.admin_domain'))->group(base_path('routes/admin.php'));
+
+        // Other platform hosts (e.g. www.) redirect everything to the main platform domain
+        foreach (array_slice(config('tenancy.central_domains'), 1) as $domain) {
+            Route::domain($domain)->any('{path?}', RedirectToPlatformController::class)->where('path', '.*');
+        }
+    });
+
+    // The one-time link platform staff follow into a business (made in the admin area)
+    Route::get('/support/{token}', SupportSignInController::class)->where('token', '[A-Za-z0-9]{64}')->name('support.sign-in');
+}
 
 /*
 |--------------------------------------------------------------------------

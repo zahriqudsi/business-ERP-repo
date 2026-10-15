@@ -59,4 +59,17 @@ class Tenant extends Model
     {
         return in_array($this->status, self::USABLE_STATUSES, true);
     }
+
+    /**
+     * The business's address: its primary custom domain, else {slug}.{base_domain}.
+     * Scheme and port follow APP_URL, so local addresses like http://acme.localhost:8000 work too.
+     */
+    public function url(string $path = '/'): string
+    {
+        $host = $this->domains()->where('is_primary', true)->value('domain') ?? $this->slug.'.'.config('tenancy.base_domain');
+        $appUrl = parse_url((string) config('app.url'));
+        $port = isset($appUrl['port']) ? ':'.$appUrl['port'] : '';
+
+        return ($appUrl['scheme'] ?? 'https').'://'.$host.$port.'/'.ltrim($path, '/');
+    }
 }
