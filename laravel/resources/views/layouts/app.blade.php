@@ -65,6 +65,12 @@
             ['Activity Log', 'activity.index', 'clock-history', 'activity.*', 'manage-business'],
         ],
     ];
+    // The business's own plan and payments, when it is one of many on the platform
+    // (Only when its billing page exists: tenancy was on when the app started)
+    $currentTenant = \Illuminate\Support\Facades\Route::has('billing.show') ? app(\App\Services\Tenancy\TenantManager::class)->current() : null;
+    if ($currentTenant) {
+        $nav['Administration'][] = ['Plan & billing', 'billing.show', 'credit-card', 'billing.*', 'manage-business'];
+    }
     // Hide links (and empty sections) the signed-in user isn't allowed to open
     $nav = collect($nav)
         ->map(fn ($links) => array_values(array_filter($links, fn ($link) => ! isset($link[4]) || auth()->user()->can($link[4]))))
@@ -167,6 +173,21 @@
                         <span class="small">Ask the owner to complete the Settings page.</span>
                     @endcan
                 </div>
+            @endif
+            @if ($currentTenant && in_array($currentTenant->status, ['trial', 'past_due'], true) && $currentTenant->billingDueAt() && ! request()->routeIs('billing.*'))
+                @can('manage-business')
+                    <div class="alert {{ $currentTenant->status === 'past_due' ? 'alert-warning' : 'alert-light border' }} d-flex flex-wrap align-items-center gap-2 d-print-none">
+                        <i class="bi bi-{{ $currentTenant->status === 'past_due' ? 'exclamation-triangle' : 'hourglass-split' }} fs-5"></i>
+                        <span class="flex-grow-1">
+                            @if ($currentTenant->status === 'past_due')
+                                <strong>Payment overdue.</strong> Your account will be paused on {{ $currentTenant->billingDueAt()->copy()->addDays(config('tenancy.billing.grace_days'))->format('j M Y') }} unless it is paid.
+                            @else
+                                Your free trial ends on <strong>{{ $currentTenant->billingDueAt()->format('j M Y') }}</strong>{{ $currentTenant->billingDueAt()->isFuture() ? ' ('.(int) ceil(now()->diffInDays($currentTenant->billingDueAt())).' days left)' : '' }}.
+                            @endif
+                        </span>
+                        <a href="{{ route('billing.show') }}" class="btn btn-sm {{ $currentTenant->status === 'past_due' ? 'btn-warning' : 'btn-outline-primary' }}">Plan &amp; billing</a>
+                    </div>
+                @endcan
             @endif
             @include('partials.flash')
             @yield('content')

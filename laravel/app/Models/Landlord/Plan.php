@@ -27,6 +27,24 @@ class Plan extends Model
         ];
     }
 
+    /**
+     * What each limit is called, for messages and the admin form.
+     */
+    public const LIMITS = [
+        'users' => 'active users',
+        'invoices_per_month' => 'invoices a month',
+    ];
+
+    /**
+     * The plan's cap for $key, or null when it is unlimited.
+     */
+    public function limit(string $key): ?int
+    {
+        $value = $this->limits[$key] ?? null;
+
+        return $value === null || $value === '' ? null : (int) $value;
+    }
+
     public function tenants(): HasMany
     {
         return $this->hasMany(Tenant::class);

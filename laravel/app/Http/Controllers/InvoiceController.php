@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\InvoiceItem;
 use App\Services\DocumentPdf;
 use App\Services\StockLedger;
+use App\Services\Tenancy\PlanLimits;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -41,8 +42,10 @@ class InvoiceController extends Controller
     /**
      * Saved over fetch() from the create form; responds with JSON.
      */
-    public function store(Request $request, StockLedger $stock): JsonResponse
+    public function store(Request $request, StockLedger $stock, PlanLimits $limits): JsonResponse
     {
+        $limits->ensureAllows('invoices_per_month', 'invoice_no');
+
         $data = $request->validate($this->rules() + [
             'invoice_no' => ['required', 'string', 'max:50', Rule::unique('invoices', 'invoice_no')],
         ], [
