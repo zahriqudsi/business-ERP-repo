@@ -24,12 +24,15 @@ class IdentifyTenant
 
         $host = $request->getHost();
 
-        // The platform's own pages (sign-up, admin) arrive in M4; business pages never open here
+        // Platform hosts have their own routes (routes/central.php); business pages never open there
         abort_if($this->resolver->isCentral($host), 404);
 
         $tenant = $this->resolver->forHost($host);
         abort_unless($tenant, 404, 'Workspace not found.');
-        abort_unless($tenant->isUsable(), 403, 'This workspace is not available. Please contact support.');
+
+        if (! $tenant->isUsable()) {
+            return response()->view('tenancy.unavailable', ['tenant' => $tenant], $tenant->status === 'provisioning' ? 503 : 403);
+        }
 
         $this->tenancy->initialize($tenant);
 

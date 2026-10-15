@@ -26,7 +26,8 @@ trait CreatesTenants
         config([
             'tenancy.enabled' => true,
             'tenancy.base_domain' => 'pos.test',
-            'tenancy.central_domains' => ['pos.test'],
+            'tenancy.central_domains' => ['pos.test', 'www.pos.test'],
+            'tenancy.admin_domain' => 'admin.pos.test',
         ]);
 
         $this->beforeApplicationDestroyed(function () {
