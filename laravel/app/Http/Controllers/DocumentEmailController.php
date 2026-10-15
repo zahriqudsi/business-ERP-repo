@@ -91,7 +91,8 @@ class DocumentEmailController extends Controller
         return redirect($document['back'])->with(
             $mailIsLive ? 'success' : 'warning',
             $mailIsLive
-                ? "{$document['label']} emailed to {$data['to']}."
+                // With a queue running, the email goes out in the background a moment later
+                ? (config('queue.default') === 'sync' ? "{$document['label']} emailed to {$data['to']}." : "{$document['label']} is being emailed to {$data['to']}.")
                 : "{$document['label']} was written to the mail log, not sent: email delivery isn't set up yet.",
         );
     }

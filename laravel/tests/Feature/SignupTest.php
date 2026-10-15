@@ -31,6 +31,7 @@ class SignupTest extends TestCase
             'email' => 'ann@acme.lk',
             'password' => 'secret-password',
             'password_confirmation' => 'secret-password',
+            'accept_terms' => '1',
         ];
     }
 
@@ -65,10 +66,41 @@ class SignupTest extends TestCase
             $this->assertSame(['owner', 'ann@acme.lk', 'Ann Perera'], [$owner->role, $owner->email, $owner->name]);
             $this->assertSame('Acme Traders', config('sjpos.company.name'));
         });
-        Mail::assertSent(WelcomeMail::class, fn (WelcomeMail $mail) => $mail->hasTo('ann@acme.lk') && $mail->loginUrl === 'http://acme.pos.test/login');
+        Mail::assertQueued(WelcomeMail::class, fn (WelcomeMail $mail) => $mail->hasTo('ann@acme.lk') && $mail->loginUrl === 'http://acme.pos.test/login');
         $this->assertTrue(PlatformActivity::where('tenant_id', $tenant->id)->where('action', 'signed_up')->exists());
 
         $this->signInOn($tenant, 'ann');
+    }
+
+    public function test_signup_requires_accepting_the_terms(): void
+    {
+        Mail::fake();
+        $payload = $this->payload();
+        unset($payload['accept_terms']);
+
+        $this->post('http://pos.test/signup', $payload)
+            ->assertSessionHasErrors(['accept_terms' => 'Please accept the Terms of Service and Privacy Policy to sign up.']);
+
+        $this->assertSame(0, Tenant::count());
+        Mail::assertNothingOutgoing();
+    }
+
+    public function test_signup_records_when_the_terms_were_accepted(): void
+    {
+        Mail::fake();
+        $this->freezeTime();
+
+        $this->post('http://pos.test/signup', $this->payload());
+
+        $this->assertSame(now()->toIso8601String(), PlatformActivity::where('action', 'signed_up')->firstOrFail()->data['terms_accepted_at']);
+    }
+
+    public function test_terms_and_privacy_pages_name_the_operator(): void
+    {
+        config(['tenancy.operator.name' => 'SJ Technology (Pvt) Ltd']);
+
+        $this->get('http://pos.test/terms')->assertOk()->assertSee('Terms of Service')->assertSee('SJ Technology (Pvt) Ltd');
+        $this->get('http://pos.test/privacy')->assertOk()->assertSee('Privacy Policy')->assertSee('SJ Technology (Pvt) Ltd');
     }
 
     public function test_signup_rejects_a_reserved_subdomain(): void
@@ -79,7 +111,7 @@ class SignupTest extends TestCase
             ->assertSessionHasErrors(['slug' => 'That subdomain is reserved.']);
 
         $this->assertSame(0, Tenant::count());
-        Mail::assertNothingSent();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_signup_rejects_a_subdomain_already_taken(): void
@@ -100,7 +132,7 @@ class SignupTest extends TestCase
         $this->post('http://pos.test/find', ['email' => 'ann@acme.lk'])
             ->assertSessionHas('success', 'If that email address owns any businesses, we have sent their addresses to it.');
 
-        Mail::assertSent(FindWorkspaceMail::class, fn (FindWorkspaceMail $mail) => $mail->hasTo('ann@acme.lk')
+        Mail::assertQueued(FindWorkspaceMail::class, fn (FindWorkspaceMail $mail) => $mail->hasTo('ann@acme.lk')
             && $mail->workspaces === [['name' => 'Acme Ltd', 'url' => 'http://acme.pos.test/login']]);
     }
 
@@ -112,7 +144,7 @@ class SignupTest extends TestCase
         $this->post('http://pos.test/find', ['email' => 'someone@else.lk'])
             ->assertSessionHas('success', 'If that email address owns any businesses, we have sent their addresses to it.');
 
-        Mail::assertNothingSent();
+        Mail::assertNothingOutgoing();
     }
 
     public function test_a_paused_business_shows_a_notice_instead_of_its_pages(): void

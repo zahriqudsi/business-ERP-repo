@@ -141,6 +141,24 @@ payments and `TENANCY_PAYMENT_INSTRUCTIONS` under **Plan & billing**, with a rem
 Staff can also **download a backup** of any business and **close** an account; its data is kept for
 `TENANCY_RETENTION_DAYS` (the notice page shows until when), and **Re-open** reverses it.
 
+## Background jobs, monitoring and legal pages
+
+**Queue.** Set `QUEUE_CONNECTION=database` to send emails in the background (sign-up welcome, "find my
+business", and documents emailed to customers; login codes stay immediate). With tenancy on, the job
+tables are in the landlord database (`php artisan migrate --database=landlord --path=database/migrations/landlord`)
+and each job runs as the business it was queued in. The scheduler starts a short worker every minute
+(`queue:work --stop-when-empty`), so the existing `schedule:run` cron entry is all that is needed.
+Failed jobs: `php artisan queue:failed`, then `php artisan queue:retry all`.
+
+**Monitoring.** Failure alerts go by email to `ALERT_EMAILS` and every platform admin: a background job
+that gave up, a failed nightly backup, or a failed billing check (each alert at most once an hour).
+Point an uptime monitor at `/up`; it fails when a database can't be reached. For daily log files that
+delete themselves after 14 days, set `LOG_STACK=daily`.
+
+**Legal pages.** `/terms` and `/privacy` on the platform domain name `TENANCY_OPERATOR_NAME` and
+`TENANCY_SUPPORT_EMAIL`; sign-up requires accepting them, recorded with the date in the platform log.
+They are a general starting point: have them reviewed for your business before taking real sign-ups.
+
 ## Moving an existing install onto tenancy (SJ Technology)
 
 The existing database becomes the first business as it is: nothing is copied, and every step below

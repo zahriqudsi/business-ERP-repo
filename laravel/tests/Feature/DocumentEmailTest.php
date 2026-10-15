@@ -57,12 +57,12 @@ class DocumentEmailTest extends TestCase
             ->assertRedirect(route('invoices.show', $invoice))
             ->assertSessionHas('success', 'Invoice #1500 emailed to accounts@acme.lk.');
 
-        Mail::assertSent(DocumentMail::class, function (DocumentMail $mail) {
+        Mail::assertQueued(DocumentMail::class, function (DocumentMail $mail) {
             return $mail->hasTo('accounts@acme.lk')
                 && $mail->hasCc('boss@acme.lk') && $mail->hasCc('owner@acme.lk')
                 && $mail->subjectLine === 'Your invoice'
                 && $mail->fileName === 'Acme_1500.pdf'
-                && str_starts_with($mail->pdfContent, '%PDF');
+                && str_starts_with($mail->pdfContent(), '%PDF');
         });
         $this->assertDatabaseHas('sent_emails', [
             'document_type' => 'invoice', 'document_id' => $invoice->id, 'recipient' => 'accounts@acme.lk', 'cc' => 'boss@acme.lk, owner@acme.lk',
@@ -77,7 +77,7 @@ class DocumentEmailTest extends TestCase
 
         $this->post("/documents/invoice/{$invoice->id}/email", $this->message())->assertRedirect();
 
-        Mail::assertSent(DocumentMail::class, fn (DocumentMail $mail) => $mail->hasFrom('noreply@platform.test', 'SJ Technology')
+        Mail::assertQueued(DocumentMail::class, fn (DocumentMail $mail) => $mail->hasFrom('noreply@platform.test', 'SJ Technology')
             && $mail->hasReplyTo('sjtechnology365@gmail.com', 'SJ Technology'));
     }
 
@@ -109,7 +109,7 @@ class DocumentEmailTest extends TestCase
         $this->post("/documents/invoice/{$invoice->id}/email", $this->message(['cc' => 'ok@acme.lk, broken']))
             ->assertSessionHasErrors(['cc.1' => '“broken” in CC is not a valid email address.']);
 
-        Mail::assertNothingSent();
+        Mail::assertNothingOutgoing();
         $this->assertSame(0, SentEmail::count());
     }
 
@@ -130,7 +130,7 @@ class DocumentEmailTest extends TestCase
         $this->get("/documents/job/{$job->id}/email")->assertOk()->assertSee('value="nimal@acme.lk"', false)->assertSee('Dear Nimal');
         $this->post("/documents/job/{$job->id}/email", $this->message())->assertRedirect(route('jobs.show', $job));
 
-        Mail::assertSent(DocumentMail::class, 2);
+        Mail::assertQueued(DocumentMail::class, 2);
     }
 
     public function test_statement_email_keeps_the_period(): void
@@ -144,7 +144,7 @@ class DocumentEmailTest extends TestCase
         $this->post("/documents/statement/{$customer->id}/email", $this->message(['period_from' => '2026-01-01', 'period_to' => '2026-06-30']))
             ->assertRedirect();
 
-        Mail::assertSent(DocumentMail::class, fn (DocumentMail $mail) => $mail->fileName === 'statement_acme_2026-01-01_to_2026-06-30.pdf');
+        Mail::assertQueued(DocumentMail::class, fn (DocumentMail $mail) => $mail->fileName === 'statement_acme_2026-01-01_to_2026-06-30.pdf');
     }
 
     public function test_unknown_document_types_and_ids_are_not_found(): void

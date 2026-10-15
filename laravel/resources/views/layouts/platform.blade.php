@@ -43,6 +43,14 @@
         @yield('content')
     </main>
 
+    @if (Route::has('central.terms'))
+        <footer class="container pb-4 small text-body-secondary d-flex flex-wrap gap-3">
+            <span>&copy; {{ now()->year }} {{ config('tenancy.operator.name') }}</span>
+            <a href="{{ route('central.terms') }}" class="text-body-secondary">Terms</a>
+            <a href="{{ route('central.privacy') }}" class="text-body-secondary">Privacy</a>
+        </footer>
+    @endif
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 

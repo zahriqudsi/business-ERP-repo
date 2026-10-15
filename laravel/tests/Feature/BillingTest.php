@@ -189,7 +189,7 @@ class BillingTest extends TestCase
 
         $this->post('http://pos.test/signup', [
             'business_name' => 'Acme Traders', 'slug' => 'acme', 'name' => 'Ann', 'username' => 'ann',
-            'email' => 'ann@acme.lk', 'password' => 'secret-password', 'password_confirmation' => 'secret-password',
+            'email' => 'ann@acme.lk', 'password' => 'secret-password', 'password_confirmation' => 'secret-password', 'accept_terms' => '1',
         ])->assertRedirect('http://acme.pos.test/login');
 
         $this->assertSame($plan->id, Tenant::where('slug', 'acme')->value('plan_id'));

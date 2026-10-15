@@ -56,6 +56,15 @@
                         <input type="password" id="password_confirmation" name="password_confirmation" class="form-control" minlength="8" autocomplete="new-password" required>
                     </div>
                     <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input @error('accept_terms') is-invalid @enderror" type="checkbox" id="accept_terms" name="accept_terms" value="1" @checked(old('accept_terms')) required>
+                            <label class="form-check-label small" for="accept_terms">
+                                I agree to the <a href="{{ route('central.terms') }}" target="_blank">Terms of Service</a> and <a href="{{ route('central.privacy') }}" target="_blank">Privacy Policy</a>.
+                            </label>
+                            @error('accept_terms')<div class="invalid-feedback">{{ $message }}</div>@enderror
+                        </div>
+                    </div>
+                    <div class="col-12">
                         <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Create my business</button>
                         <p class="small text-body-secondary text-center mt-2 mb-0">14 days free. Setting up takes a few seconds.</p>
                     </div>
