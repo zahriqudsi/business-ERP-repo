@@ -14,7 +14,7 @@
 return [
 
     // The software's own name, shown under the business name in the sidebar
-    'product_name' => env('PRODUCT_NAME', 'Business Manager'),
+    'product_name' => env('PRODUCT_NAME', 'Billora'),
 
     'company' => [
         'name' => 'My Business',

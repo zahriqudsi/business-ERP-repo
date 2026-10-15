@@ -33,8 +33,10 @@ return [
 
     // Who runs the platform, as named on the Terms and Privacy pages
     'operator' => [
-        'name' => env('TENANCY_OPERATOR_NAME') ?: env('PRODUCT_NAME', 'Business Manager'),
+        'name' => env('TENANCY_OPERATOR_NAME') ?: env('PRODUCT_NAME', 'Billora'),
         'email' => env('TENANCY_SUPPORT_EMAIL', ''),
+        // Shown on the Contact page with WhatsApp and call buttons, e.g. +94 77 123 4567
+        'phone' => env('TENANCY_SUPPORT_PHONE', ''),
         'country' => env('TENANCY_OPERATOR_COUNTRY', 'Sri Lanka'),
     ],
 
